@@ -374,14 +374,15 @@ function App() {
                 </div>
 
                 {/* Requested Credit Limit Amount and Currency */}
-                <div className="col-span-2">
-                  <label className="block text-lg font-bold text-gray-700 mb-2">
-                    REQUESTED LIMIT CURRENCY AND AMOUNT
-                  </label>
-                  <div className="flex gap-4">
+                <div className="col-span-2 grid grid-cols-2 gap-8">
+                  <div>
+                    <label htmlFor="requestedLimitCurrency" className="block text-lg font-bold text-gray-700 mb-2">
+                      REQUESTED LIMIT CURRENCY
+                    </label>
                     <div className="w-72">
                       <select
                         name="requestedLimitCurrency"
+                        id="requestedLimitCurrency"
                         value={formData.requestedLimitCurrency}
                         onChange={handleInputChange}
                         required
@@ -393,11 +394,18 @@ function App() {
                         ))}
                       </select>
                     </div>
-                    <div className="flex-1 relative">
+                  </div>
+
+                  <div className="flex justify-end">
+                    <div className="w-[28rem]">
+                      <label htmlFor="requestedLimitAmount" className="block text-lg font-bold text-gray-700 mb-2">
+                        REQUESTED LIMIT AMOUNT
+                      </label>
                       <input
                         type="text"
                         inputMode="numeric"
                         name="requestedLimitAmount"
+                        id="requestedLimitAmount"
                         value={formData.requestedLimitAmount}
                         onChange={handleInputChange}
                         placeholder="Enter amount (e.g. 1,000,000)"
