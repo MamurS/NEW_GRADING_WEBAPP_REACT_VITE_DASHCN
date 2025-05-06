@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button } from './components/ui/button'
-import { getAmqpConnection, prepareInformation, prepareDelcredexReport, getFile, API_BASE_URL } from './lib/api'
+import { getAmqpConnection, prepareInformation, prepareDelcredexReport, getFile } from './lib/api'
 import { FormData, COUNTRIES, CURRENCIES, LANGUAGES } from './types/form'
 
 function App() {
@@ -21,12 +21,6 @@ function App() {
   const [downloadLink, setDownloadLink] = useState<string | null>(null)
   const [isPreparingFile, setIsPreparingFile] = useState(false)
   const [isCancelled, setIsCancelled] = useState(false)
-
-  // Map country names to their corresponding numbers
-  const countryNumbers: { [key: string]: number } = {
-    'Russia': 170,
-    // Add other country numbers as needed
-  }
 
   const formatNumber = (value: string) => {
     // Remove all non-digit and non-decimal characters
