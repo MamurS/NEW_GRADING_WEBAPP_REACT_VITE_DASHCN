@@ -224,36 +224,46 @@ export const getFile = async (fileUuid: string): Promise<any> => {
     try {
       console.log(`Attempt ${retryCount + 1}/${MAX_RETRIES}: Sending Delcredex get_file request`);
       
-      const response = await api.post(
-        '/get_file',
-        {
-          'value': '39b5130b-ba84-4041-8574-2bb59dddf995'
+      // Construct URL with query parameters
+      const url = new URL(`${API_BASE_URL}/get_file`);
+      url.searchParams.append('file_uuid', fileUuid);
+      
+      const response = await fetch(url.toString(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
-        {
-          params: {
-            'file_uuid': fileUuid
-          },
-          responseType: 'arraybuffer'
-        }
-      );
+        body: JSON.stringify({
+          'value': '39b5130b-ba84-4041-8574-2bb59dddf995'
+        })
+      });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
-      
-      // Check if we received binary data with PDF headers
-      if (response.headers['content-type'] === 'application/octet-stream' || 
-          response.headers['content-disposition']?.includes('filename=')) {
-        return response.data;
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
-      // If not binary data, try to parse as JSON
-      const text = new TextDecoder().decode(response.data);
-      try {
-        return JSON.parse(text);
-      } catch (e) {
-        console.error('Failed to parse response as JSON:', text);
-        throw new Error('Invalid response format');
+
+      const data = await response.json();
+      console.log('File response:', data);
+
+      if (data.Download_file) {
+        return {
+          status: response.status,
+          body: {
+            Download_file: data.Download_file
+          }
+        };
       }
+
+      // If no download file in response, retry
+      if (retryCount < MAX_RETRIES - 1) {
+        console.log(`No download file available yet. Waiting ${RETRY_DELAY/1000} seconds before retry...`);
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+        retryCount++;
+        continue;
+      }
+
+      throw new Error('No download file available after maximum retries');
     } catch (error) {
       console.error(`Attempt ${retryCount + 1} failed:`, error);
       
@@ -265,6 +275,8 @@ export const getFile = async (fileUuid: string): Promise<any> => {
       await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
     }
   }
+
+  throw new Error('Maximum retry attempts reached without getting a valid response');
 };
 
 export default api; 
