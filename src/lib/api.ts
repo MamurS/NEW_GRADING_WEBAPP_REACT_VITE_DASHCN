@@ -1,16 +1,14 @@
 import axios from 'axios';
 
-// Use environment variable for API URL with fallback
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://176.97.67.69';
+// Use the proxy endpoint instead of direct API URL
+export const API_BASE_URL = '/api/proxy';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'Origin': 'https://new-grading-webapp-react-vite-dashcn.vercel.app'
+    'Accept': 'application/json'
   },
-  // Disable credentials since we're not using cookies
   withCredentials: false
 });
 
