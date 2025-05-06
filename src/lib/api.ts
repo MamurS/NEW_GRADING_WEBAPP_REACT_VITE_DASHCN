@@ -232,7 +232,7 @@ export const getFile = async (fileUuid: string): Promise<any> => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json, application/pdf'
+          'Accept': '*/*'  // Accept any content type
         },
         body: JSON.stringify({
           'value': '39b5130b-ba84-4041-8574-2bb59dddf995'
@@ -243,11 +243,16 @@ export const getFile = async (fileUuid: string): Promise<any> => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // Check if the response is a PDF
-      const contentType = response.headers.get('content-type');
-      if (contentType?.includes('application/pdf') || response.headers.get('content-disposition')?.includes('filename=')) {
+      // Get the response as ArrayBuffer first
+      const arrayBuffer = await response.arrayBuffer();
+      
+      // Check if it's a PDF by looking at the first few bytes
+      const firstBytes = new Uint8Array(arrayBuffer.slice(0, 5));
+      const isPdf = String.fromCharCode.apply(null, Array.from(firstBytes)) === '%PDF-';
+      
+      if (isPdf) {
         // Create a blob from the PDF data
-        const blob = await response.blob();
+        const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
         return {
           status: response.status,
@@ -257,9 +262,10 @@ export const getFile = async (fileUuid: string): Promise<any> => {
         };
       }
 
-      // Try to parse as JSON
+      // If not a PDF, try to parse as text/JSON
+      const text = new TextDecoder().decode(arrayBuffer);
       try {
-        const data = await response.json();
+        const data = JSON.parse(text);
         console.log('File response:', data);
 
         if (data.Download_file) {
@@ -271,7 +277,7 @@ export const getFile = async (fileUuid: string): Promise<any> => {
           };
         }
       } catch (jsonError) {
-        console.log('Response is not JSON, might be binary data');
+        console.log('Response is not JSON:', text.substring(0, 100));
       }
 
       // If no download file in response, retry
