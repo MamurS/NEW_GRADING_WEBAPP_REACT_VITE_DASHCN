@@ -216,13 +216,13 @@ export const prepareDelcredexReport = async (amqpData: any, formData: any) => {
 };
 
 export const getFile = async (fileUuid: string): Promise<any> => {
-  const MAX_RETRIES = 5;
-  const RETRY_DELAY = 10000; // 10 seconds delay between retries
+  const MAX_RETRIES = 10; // Increased retries
+  const RETRY_DELAY = 15000; // Increased delay to 15 seconds
   let retryCount = 0;
 
   while (retryCount < MAX_RETRIES) {
     try {
-      console.log(`Attempt ${retryCount + 1}/${MAX_RETRIES}: Sending Delcredex get_file request`);
+      console.log(`Attempt ${retryCount + 1}/${MAX_RETRIES}: Sending Delcredex get_file request for UUID: ${fileUuid}`);
       
       // Construct URL with query parameters
       const url = new URL(`${API_BASE_URL}/get_file`);
@@ -232,12 +232,15 @@ export const getFile = async (fileUuid: string): Promise<any> => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': '*/*'  // Accept any content type
+          'Accept': '*/*'
         },
         body: JSON.stringify({
           'value': '39b5130b-ba84-4041-8574-2bb59dddf995'
         })
       });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -245,12 +248,18 @@ export const getFile = async (fileUuid: string): Promise<any> => {
 
       // Get the response as ArrayBuffer first
       const arrayBuffer = await response.arrayBuffer();
+      console.log('Received response of size:', arrayBuffer.byteLength, 'bytes');
       
       // Check if it's a PDF by looking at the first few bytes
       const firstBytes = new Uint8Array(arrayBuffer.slice(0, 5));
-      const isPdf = String.fromCharCode.apply(null, Array.from(firstBytes)) === '%PDF-';
+      const firstChars = String.fromCharCode.apply(null, Array.from(firstBytes));
+      console.log('First bytes of response:', firstChars);
+      
+      const isPdf = firstChars === '%PDF-';
+      console.log('Is PDF:', isPdf);
       
       if (isPdf) {
+        console.log('Creating PDF blob and URL');
         // Create a blob from the PDF data
         const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
@@ -264,9 +273,11 @@ export const getFile = async (fileUuid: string): Promise<any> => {
 
       // If not a PDF, try to parse as text/JSON
       const text = new TextDecoder().decode(arrayBuffer);
+      console.log('Response text (first 100 chars):', text.substring(0, 100));
+      
       try {
         const data = JSON.parse(text);
-        console.log('File response:', data);
+        console.log('Parsed JSON response:', data);
 
         if (data.Download_file) {
           return {
@@ -276,13 +287,24 @@ export const getFile = async (fileUuid: string): Promise<any> => {
             }
           };
         }
+
+        // Check for status in response
+        if (data.status === false) {
+          console.log('Server indicates file is not ready yet');
+          if (retryCount < MAX_RETRIES - 1) {
+            console.log(`Waiting ${RETRY_DELAY/1000} seconds before retry...`);
+            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+            retryCount++;
+            continue;
+          }
+        }
       } catch (jsonError) {
-        console.log('Response is not JSON:', text.substring(0, 100));
+        console.log('Failed to parse response as JSON:', jsonError);
       }
 
-      // If no download file in response, retry
+      // If we get here and haven't returned yet, retry
       if (retryCount < MAX_RETRIES - 1) {
-        console.log(`No download file available yet. Waiting ${RETRY_DELAY/1000} seconds before retry...`);
+        console.log(`No valid response yet. Waiting ${RETRY_DELAY/1000} seconds before retry...`);
         await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
         retryCount++;
         continue;
