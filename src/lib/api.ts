@@ -9,8 +9,8 @@ const api = axios.create({
     'Content-Type': 'application/json',
     'Accept': 'application/json'
   },
-  // Enable credentials for cross-origin requests
-  withCredentials: true
+  // Disable credentials since we're not using cookies
+  withCredentials: false
 });
 
 // Add request interceptor for better error handling
