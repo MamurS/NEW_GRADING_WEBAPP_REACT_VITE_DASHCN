@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button } from './components/ui/button'
-import { getData, getAmqpConnection, prepareInformation, prepareDelcredexReport, getFile, API_BASE_URL } from './lib/api'
+import { getAmqpConnection, prepareInformation, prepareDelcredexReport, getFile, API_BASE_URL } from './lib/api'
 import { FormData, COUNTRIES, CURRENCIES, LANGUAGES } from './types/form'
 
 function App() {
@@ -18,29 +18,8 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [amountError, setAmountError] = useState<string | null>(null)
   const [companyCodeError, setCompanyCodeError] = useState<string | null>(null)
-  const [serverResponse, setServerResponse] = useState<any>(null)
-  const [dimResponse, setDimResponse] = useState<any>(null)
-  const [amqpConnection, setAmqpConnection] = useState<any>(null)
-  const [delcredexReportResponse, setDelcredexReportResponse] = useState<any>(null)
   const [downloadLink, setDownloadLink] = useState<string | null>(null)
   const [isPreparingFile, setIsPreparingFile] = useState(false)
-  const [currentRequest, setCurrentRequest] = useState<{
-    url: string;
-    method: string;
-    headers: Record<string, string>;
-    body: any;
-  } | null>(null)
-  const [currentResponse, setCurrentResponse] = useState<{
-    status: number;
-    headers: Record<string, string>;
-    body: any;
-  } | null>(null)
-  const [getFileResponses, setGetFileResponses] = useState<Array<{
-    attempt: number;
-    status: number;
-    headers: Record<string, string>;
-    body: any;
-  }>>([])
   const [isCancelled, setIsCancelled] = useState(false)
 
   // Map country names to their corresponding numbers
@@ -111,13 +90,8 @@ function App() {
     setLoading(false)
     setIsPreparingFile(false)
     setError(null)
-    setServerResponse(null)
-    setDimResponse(null)
-    setDelcredexReportResponse(null)
     setDownloadLink(null)
-    setCurrentRequest(null)
-    setCurrentResponse(null)
-    setGetFileResponses([])
+    setIsPreparingFile(false)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -126,101 +100,32 @@ function App() {
     try {
       setLoading(true)
       setError(null)
-      setServerResponse(null)
-      setDimResponse(null)
-      setDelcredexReportResponse(null)
-      setDownloadLink(null)
-      setIsPreparingFile(false)
-      setCurrentRequest(null)
-      setCurrentResponse(null)
 
       // First step: Get AMQP Connection
       if (isCancelled) return
-      const amqpResponse = await getAmqpConnection('39b5130b-ba84-4041-8574-2bb59dddf995')
+      const amqpResponse = await getAmqpConnection()
       if (isCancelled) return
       console.log('AMQP Connection established:', amqpResponse)
-      setServerResponse(amqpResponse)
-      setAmqpConnection(amqpResponse)
-      setCurrentRequest({
-        url: `${API_BASE_URL}/get_amqp_connection`,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: { token: '39b5130b-ba84-4041-8574-2bb59dddf995' }
-      })
-      setCurrentResponse({
-        status: 200,
-        headers: {},
-        body: amqpResponse
-      })
 
       // Second step: Prepare DIM Information using the AMQP connection details
       if (isCancelled) return
       let dimResponse = await prepareInformation(amqpResponse, formData)
       if (isCancelled) return
       console.log('DIM Information prepared:', dimResponse)
-      setDimResponse(dimResponse)
-      setCurrentRequest({
-        url: `${API_BASE_URL}/prepare_information`,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: { ...formData, amqp: amqpResponse }
-      })
-      setCurrentResponse({
-        status: 200,
-        headers: {},
-        body: dimResponse
-      })
 
       // Check if we need to renew AMQP connection
       if (dimResponse.status === false) {
         if (isCancelled) return
         console.log('DIM Prepare Information status is false, renewing AMQP connection...')
         // Renew AMQP connection
-        const newAmqpResponse = await getAmqpConnection('39b5130b-ba84-4041-8574-2bb59dddf995')
+        const newAmqpResponse = await getAmqpConnection()
         if (isCancelled) return
         console.log('New AMQP Connection established:', newAmqpResponse)
-        setServerResponse(newAmqpResponse)
-        setAmqpConnection(newAmqpResponse)
-        setCurrentRequest({
-          url: `${API_BASE_URL}/get_amqp_connection`,
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: { token: '39b5130b-ba84-4041-8574-2bb59dddf995' }
-        })
-        setCurrentResponse({
-          status: 200,
-          headers: {},
-          body: newAmqpResponse
-        })
 
         // Retry DIM Prepare Information with new AMQP credentials
         dimResponse = await prepareInformation(newAmqpResponse, formData)
         if (isCancelled) return
         console.log('DIM Information prepared with new AMQP credentials:', dimResponse)
-        setDimResponse(dimResponse)
-        setCurrentRequest({
-          url: `${API_BASE_URL}/prepare_information`,
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: { ...formData, amqp: newAmqpResponse }
-        })
-        setCurrentResponse({
-          status: 200,
-          headers: {},
-          body: dimResponse
-        })
       }
 
       // Third step: Prepare Delcredex Report
@@ -228,21 +133,6 @@ function App() {
       const delcredexReport = await prepareDelcredexReport(amqpResponse, formData)
       if (isCancelled) return
       console.log('Delcredex Report prepared:', delcredexReport)
-      setDelcredexReportResponse(delcredexReport)
-      setCurrentRequest({
-        url: `${API_BASE_URL}/prepare_report`,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: { ...formData, amqp: amqpResponse }
-      })
-      setCurrentResponse({
-        status: 200,
-        headers: {},
-        body: delcredexReport
-      })
 
       // Fourth step: Get file after 1 minute
       if (delcredexReport.status === true && delcredexReport.data?.file_uuid) {
@@ -255,27 +145,6 @@ function App() {
         if (fileResponse.body.Download_file) {
           setDownloadLink(fileResponse.body.Download_file)
         }
-        setCurrentRequest({
-          url: `${API_BASE_URL}/get_file`,
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: { file_uuid: delcredexReport.data.file_uuid }
-        })
-        setCurrentResponse({
-          status: fileResponse.status,
-          headers: fileResponse.headers,
-          body: fileResponse.body
-        })
-        // Add the response to the getFileResponses array
-        setGetFileResponses(prev => [...prev, {
-          attempt: prev.length + 1,
-          status: fileResponse.status,
-          headers: fileResponse.headers,
-          body: fileResponse.body
-        }])
         setIsPreparingFile(false)
       }
 

@@ -1,7 +1,6 @@
 import axios from 'axios';
 
 export const API_BASE_URL = 'https://176.97.67.69';
-const API_TOKEN = '39b5130b-ba84-4041-8574-2bb59dddf995';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -45,7 +44,7 @@ export const postData = async (endpoint: string, data: any) => {
   }
 };
 
-export const getAmqpConnection = async (token: string) => {
+export const getAmqpConnection = async () => {
   try {
     const response = await api.post('/get_amqp_connection', {
       value: "39b5130b-ba84-4041-8574-2bb59dddf995"
