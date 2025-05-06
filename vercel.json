@@ -3,12 +3,6 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "vite",
-  "functions": {
-    "api/proxy.ts": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  },
   "builds": [
     {
       "src": "package.json",
@@ -16,10 +10,6 @@
       "config": {
         "distDir": "dist"
       }
-    },
-    {
-      "src": "api/proxy.ts",
-      "use": "@vercel/node"
     }
   ]
 } 

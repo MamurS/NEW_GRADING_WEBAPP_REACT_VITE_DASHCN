@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Use the proxy endpoint instead of direct API URL
-export const API_BASE_URL = '/api/proxy';
+// Use environment variable for API URL with fallback
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://176.97.67.69';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -17,8 +17,6 @@ api.interceptors.request.use(
   (config) => {
     // Log the request for debugging
     console.log('Making request to:', config.url);
-    // Add CORS headers to every request
-    config.headers['Origin'] = 'https://new-grading-webapp-react-vite-dashcn.vercel.app';
     return config;
   },
   (error) => {
@@ -83,21 +81,26 @@ export const postData = async (endpoint: string, data: any) => {
 
 export const getAmqpConnection = async () => {
   try {
-    const response = await api.post('/get_amqp_connection', {
-      value: "39b5130b-ba84-4041-8574-2bb59dddf995"
+    const response = await fetch(`${API_BASE_URL}/get_amqp_connection`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        value: "39b5130b-ba84-4041-8574-2bb59dddf995"
+      })
     });
 
-    console.log('AMQP Connection Response:', response.data);
-    return response.data;
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('AMQP Connection Response:', data);
+    return data;
   } catch (error) {
     console.error('Error in AMQP Connection:', error);
-    if (axios.isAxiosError(error)) {
-      console.error('Error details:', {
-        status: error.response?.status,
-        data: error.response?.data,
-        headers: error.response?.headers
-      });
-    }
     throw error;
   }
 };
