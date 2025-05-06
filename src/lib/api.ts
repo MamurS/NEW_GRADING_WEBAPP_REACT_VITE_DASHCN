@@ -232,7 +232,7 @@ export const getFile = async (fileUuid: string): Promise<any> => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json, application/pdf'
         },
         body: JSON.stringify({
           'value': '39b5130b-ba84-4041-8574-2bb59dddf995'
@@ -243,16 +243,35 @@ export const getFile = async (fileUuid: string): Promise<any> => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
-      console.log('File response:', data);
-
-      if (data.Download_file) {
+      // Check if the response is a PDF
+      const contentType = response.headers.get('content-type');
+      if (contentType?.includes('application/pdf') || response.headers.get('content-disposition')?.includes('filename=')) {
+        // Create a blob from the PDF data
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
         return {
           status: response.status,
           body: {
-            Download_file: data.Download_file
+            Download_file: url
           }
         };
+      }
+
+      // Try to parse as JSON
+      try {
+        const data = await response.json();
+        console.log('File response:', data);
+
+        if (data.Download_file) {
+          return {
+            status: response.status,
+            body: {
+              Download_file: data.Download_file
+            }
+          };
+        }
+      } catch (jsonError) {
+        console.log('Response is not JSON, might be binary data');
       }
 
       // If no download file in response, retry
