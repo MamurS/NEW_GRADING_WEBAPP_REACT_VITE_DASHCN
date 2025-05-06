@@ -7,7 +7,8 @@ const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json'
+    'Accept': 'application/json',
+    'Origin': 'https://new-grading-webapp-react-vite-dashcn.vercel.app'
   },
   // Disable credentials since we're not using cookies
   withCredentials: false
@@ -18,6 +19,8 @@ api.interceptors.request.use(
   (config) => {
     // Log the request for debugging
     console.log('Making request to:', config.url);
+    // Add CORS headers to every request
+    config.headers['Origin'] = 'https://new-grading-webapp-react-vite-dashcn.vercel.app';
     return config;
   },
   (error) => {
