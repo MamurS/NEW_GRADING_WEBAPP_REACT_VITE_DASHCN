@@ -29,4 +29,16 @@ swift run CreditRatings
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Environment Variables
+
+Create a `.env` file in the root directory with the following variables:
+
+```bash
+VITE_API_BASE_URL=https://your-api-url.com
+```
+
+Replace `https://your-api-url.com` with your actual API URL.
+
+## Development 

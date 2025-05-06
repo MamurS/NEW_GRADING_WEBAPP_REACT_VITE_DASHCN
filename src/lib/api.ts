@@ -1,21 +1,16 @@
 import axios from 'axios';
 
-export const API_BASE_URL = 'https://176.97.67.69';
+// Use environment variable for API URL with fallback
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://176.97.67.69';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    'Accept': 'application/json'
   },
-  // Browser-compatible SSL handling
-  withCredentials: false,
-  httpsAgent: {
-    rejectUnauthorized: false
-  }
+  // Enable credentials for cross-origin requests
+  withCredentials: true
 });
 
 // Add request interceptor for better error handling
@@ -225,8 +220,8 @@ export const getFile = async (fileUuid: string): Promise<any> => {
     try {
       console.log(`Attempt ${retryCount + 1}/${MAX_RETRIES}: Sending Delcredex get_file request`);
       
-      const response = await axios.post(
-        `${API_BASE_URL}/get_file`,
+      const response = await api.post(
+        '/get_file',
         {
           'value': '39b5130b-ba84-4041-8574-2bb59dddf995'
         },
@@ -234,11 +229,7 @@ export const getFile = async (fileUuid: string): Promise<any> => {
           params: {
             'file_uuid': fileUuid
           },
-          headers: {
-            'accept': 'application/json',
-            'Content-Type': 'application/json'
-          },
-          responseType: 'arraybuffer' // This will handle binary data
+          responseType: 'arraybuffer'
         }
       );
 
@@ -248,61 +239,28 @@ export const getFile = async (fileUuid: string): Promise<any> => {
       // Check if we received binary data with PDF headers
       if (response.headers['content-type'] === 'application/octet-stream' || 
           response.headers['content-disposition']?.includes('filename=')) {
-        // Create a blob from the binary data
-        const blob = new Blob([response.data], { type: 'application/pdf' });
-        // Create a URL for the blob
-        const url = window.URL.createObjectURL(blob);
-        console.log('Successfully created PDF blob URL');
-        return {
-          status: response.status,
-          headers: response.headers,
-          body: { Download_file: url }
-        };
+        return response.data;
       }
-
-      // If no binary data, try to parse as JSON
+      
+      // If not binary data, try to parse as JSON
+      const text = new TextDecoder().decode(response.data);
       try {
-        const textDecoder = new TextDecoder('utf-8');
-        const jsonResponse = JSON.parse(textDecoder.decode(response.data));
-        console.log('Delcredex Get File Response:', jsonResponse);
-        
-        if (jsonResponse.Download_file) {
-          return {
-            status: response.status,
-            headers: response.headers,
-            body: jsonResponse
-          };
-        }
+        return JSON.parse(text);
       } catch (e) {
-        console.log('Response is not JSON, waiting for binary data...');
+        console.error('Failed to parse response as JSON:', text);
+        throw new Error('Invalid response format');
       }
-
-      // Only retry if we didn't get any binary data or JSON with download link
-      if (retryCount < MAX_RETRIES - 1) {
-        console.log(`No binary data or download link available yet. Waiting ${RETRY_DELAY/1000} seconds before retry...`);
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-      }
-
-      retryCount++;
     } catch (error) {
-      console.error('Error in Delcredex Get File:', error);
-      if (axios.isAxiosError(error)) {
-        console.error('Error details:', {
-          status: error.response?.status,
-          data: error.response?.data,
-          headers: error.response?.headers
-        });
-        if (retryCount === MAX_RETRIES - 1) {
-          throw error;
-        }
+      console.error(`Attempt ${retryCount + 1} failed:`, error);
+      
+      if (retryCount === MAX_RETRIES - 1) {
+        throw error;
       }
-      console.log(`Error occurred. Waiting ${RETRY_DELAY/1000} seconds before retry...`);
-      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+      
       retryCount++;
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
     }
   }
-
-  throw new Error('Maximum retry attempts reached without getting a valid response');
 };
 
 export default api; 
